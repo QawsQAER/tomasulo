@@ -48,6 +48,29 @@ typedef struct {
    int op2;
 } instruction_t;
 
+//the reservation station entry
+typedef struct{
+	bool busy;
+	bool ready;
+	instruction_t ins;
+	uint16_t source1_tag;
+	uint16_t source2_tag;
+	uint32_t life;
+} reservation_entry_t;
+
+//the register entry
+typedef struct 
+{
+	uint32_t data;
+	uint16_t tag;
+} register_entry;
+
+//the reservation station
+uint32_t ADD_RES_NUM = 10;
+uint32_t MUL_RES_NUM = 10;
+reservation_entry_t *res_add;
+reservation_entry_t *res_mul;
+register_entry *reg_file;
 
 //--------------------------------------------------------------------------------------
 // Function: void initTomasulo()
@@ -120,4 +143,10 @@ void writeResult(writeResult_t *theResult);
 
 int checkDone(int registerImage[NUM_REGISTERS]);
 
+/*
+   this function will retrieve the index of the reservation station
+   for the next-to-be-executed reservation station entry 
+*/
+      
+uint32_t get_next_ins_idx(reservation_entry_t * res);
 #endif
