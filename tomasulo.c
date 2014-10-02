@@ -108,3 +108,14 @@ uint32_t get_next_ins_idx(reservation_entry_t * res)
    }
    return max_idx;
 }
+
+void my_get_config(uint32_t * add_res_num, uint32_t * mul_res_num)
+{
+	FILE *fd = fopen(CONFIG_FILE,"r");
+	if(fd == NULL)
+	{
+		fprintf(stderr,"Cannot open %s, please check the path",CONFIG_FILE);
+		exit(0);
+	}
+	return 0;
+}

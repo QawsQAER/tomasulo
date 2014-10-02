@@ -26,7 +26,7 @@
 // This will remain fixed at 32 during our grading
 
 #define NUM_REGISTERS 32
-
+#define CONFIG_FILE "config.default"
 typedef enum { add = 0, mult = 1 } mathOp;
 typedef enum { addImm = 0, addReg = 1, multImm = 2, multReg = 3 } instType;
 
@@ -149,4 +149,5 @@ int checkDone(int registerImage[NUM_REGISTERS]);
 */
       
 uint32_t get_next_ins_idx(reservation_entry_t * res);
+void my_get_config(uint32_t * add_res_num, uint32_t * mul_res_num);  
 #endif
