@@ -27,6 +27,18 @@ void initTomasulo() {
 }
 
 void writeResult(writeResult_t *theResult) {
+   printf("insturction with tag %d is finished\n",theResult->tag);
+   update_res(res_add,ADD_RES_NUM,theResult);
+   update_res(res_mul,MUL_RES_NUM,theResult);
+   uint32_t idx = 0;
+   for(idx = 0;idx < NUM_REGISTERS;idx++)
+   {
+      if(reg_file[idx].tag == theResult->tag)
+      {
+         reg_file[idx].tag = 0;
+         reg_file[idx].data = theResult->value;
+      }
+   }
    return;
 }
 
@@ -37,13 +49,26 @@ void writeResult(writeResult_t *theResult) {
    3. increase the waiting time for all the other reservation entry.
 */
 int execute(mathOp mathOpType, executeRequest_t *executeRequest) {
+   int32_t idx = 0;
    if(mathOpType == add)
    {
-
+      idx = get_next_ins_idx(res_add);
+      if(idx < 0)
+         return 0;
+      executeRequest->tag = idx + 1;
+      executeRequest->op1 = res_add[idx].ins.op1;
+      executeRequest->op2 = res_add[idx].ins.op2;
+      res_add[idx].busy = 0;
    }
    else if(mathOpType == mult)
    {
-
+      idx = get_next_ins_idx(res_mul);
+      if(idx < 0)
+         return 0;
+      executeRequest->tag = idx + ADD_RES_NUM + 1;
+      executeRequest->op1 = res_mul[idx].ins.op1;
+      executeRequest->op2 = res_mul[idx].ins.op2;
+      res_mul[idx].busy = 0;
    }
    else
    {
@@ -88,6 +113,9 @@ int issue(instruction_t *theInstruction) {
             }
             res_add[idx].ins.op2 = theInstruction->op2;
             res_add[idx].life = 0;
+
+            //update the destination register.
+            reg_file[theInstruction->dest].tag = idx + 1;
             return 1;
          }
          else
@@ -127,6 +155,8 @@ int issue(instruction_t *theInstruction) {
                res_add[idx].ready = 0;
             }
             res_add[idx].life = 0;
+            //update the destination register.
+            reg_file[theInstruction->dest].tag = idx + 1;
             return 1;
          }
          else
@@ -158,6 +188,9 @@ int issue(instruction_t *theInstruction) {
             }
             res_mul[idx].ins.op2 = theInstruction->op2;
             res_mul[idx].life = 0;
+
+            //update the destination register.
+            reg_file[theInstruction->dest].tag = idx + ADD_RES_NUM +1;
             return 1;
          }
          else
@@ -195,6 +228,8 @@ int issue(instruction_t *theInstruction) {
                res_mul[idx].ready = 0;
             }
             res_mul[idx].life = 0;
+            reg_file[theInstruction->dest].tag = idx + ADD_RES_NUM +1;
+
             return 1;
          }
          else
@@ -206,10 +241,28 @@ int issue(instruction_t *theInstruction) {
 }
 
 int checkDone(int registerImage[NUM_REGISTERS]) {
+   uint32_t count = 0;
+   for(count = 0; count < ADD_RES_NUM;count++)
+   {
+      if(res_add[count].busy)
+      {
+         printf("instruction in adder reservation station\n");
+         return 0;
+      }
+   }
+   for(count = 0; count < MUL_RES_NUM;count++)
+   {
+      if(res_mul[count].busy)
+      {
+         printf("instruction in mul reservation station\n");
+         return 0;
+      }
+   }
+
    int i;
 
    for (i=0; i < NUM_REGISTERS; i++) {
-      registerImage[i] = 0;
+      registerImage[i] = reg_file[i].data;
    }
    return (1);
 }
@@ -232,11 +285,11 @@ int32_t get_available_slot(reservation_entry_t * res)
    return -1;
 }
 
-uint32_t get_next_ins_idx(reservation_entry_t * res)
+int32_t get_next_ins_idx(reservation_entry_t * res)
 {
    uint32_t idx = 0;
    uint32_t life_max = 0;
-   uint32_t max_idx = 0;
+   uint32_t max_idx = -1;
    uint32_t num_of_entries = 0;
    if(res == res_add)
       {num_of_entries = ADD_RES_NUM;}
@@ -248,10 +301,15 @@ uint32_t get_next_ins_idx(reservation_entry_t * res)
    uint32_t count = 0;
    for(count = 0; count < num_of_entries;count++)
    {
-      if(res[count].busy && res[count].ready && (res[count].life > life_max))
+      if(res[count].busy && res[count].ready)
       {
-         life_max = count;
-         max_idx = count;
+         if(res[count].life > life_max)
+         {
+            life_max = res[count].life;
+            max_idx = count;
+         }
+         else
+            res[count].life++;
       }
    }
    return max_idx;
@@ -271,4 +329,39 @@ void my_get_config(uint32_t * add_res_num, uint32_t * mul_res_num)
    printf("Adder reservation slots %d\nMultiplier reservation slots %d\n",*add_res_num,*mul_res_num);
    fclose(fd);
 	return ;
+}
+
+void update_res(reservation_entry_t * res, uint32_t num, writeResult_t * writeResult)
+{
+   int tag = writeResult->tag;
+   uint32_t idx = 0;
+   for(idx = 0;idx < num;idx++)
+   {
+      if(res[idx].busy && (res[idx].src1_tag == tag || res[idx].src2_tag == tag))
+      {
+         if(res[idx].src1_tag == tag)
+         {
+            res[idx].src1_tag = 0;
+            res[idx].ins.op1 = writeResult->value;
+         }
+
+         if(res[idx].src2_tag == tag)
+         {
+            res[idx].src2_tag = 0;
+            res[idx].ins.op2 = writeResult->value;
+         }
+
+         if(res[idx].src1_tag == res[idx].src2_tag == 0)
+            res[idx].ready = 1;
+      }
+   }
+}
+
+void show_res_entry(reservation_entry_t *res,uint32_t num)
+{
+   uint32_t idx = 0;
+   for(idx = 0;idx < num;idx++)
+   {
+      printf("busy: %u, ready %u, life %u\n",res[idx].busy,res[idx].ready,res[idx].life);
+   }
 }

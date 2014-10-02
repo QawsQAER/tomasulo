@@ -153,14 +153,14 @@ int checkDone(int registerImage[NUM_REGISTERS]);
 	This function will retrieve the index of the first available slot
 	in the reservation station pointed by the res pointer.
 */
-uint32_t get_available_slot(reservation_entry_t * res);
+int32_t get_available_slot(reservation_entry_t * res);
 
 /*
    this function will retrieve the index of the reservation station
    for the next-to-be-executed reservation station entry 
 */
 
-uint32_t get_next_ins_idx(reservation_entry_t * res);
+int32_t get_next_ins_idx(reservation_entry_t * res);
 
 /*
 	this function will fopen() the configuration, and read in the config about
@@ -168,4 +168,7 @@ uint32_t get_next_ins_idx(reservation_entry_t * res);
 */
 void my_get_config(uint32_t * add_res_num, uint32_t * mul_res_num);
 
+void update_res(reservation_entry_t *res, uint32_t num, writeResult_t *theResult);
+
+void show_res_entries(reservation_entry_t *res, uint32_t num);
 #endif
