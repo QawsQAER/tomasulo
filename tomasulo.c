@@ -247,6 +247,7 @@ int checkDone(int registerImage[NUM_REGISTERS]) {
       if(res_add[count].busy)
       {
          printf("instruction in adder reservation station\n");
+         show_res_entry(res_add,ADD_RES_NUM);
          return 0;
       }
    }
@@ -255,6 +256,7 @@ int checkDone(int registerImage[NUM_REGISTERS]) {
       if(res_mul[count].busy)
       {
          printf("instruction in mul reservation station\n");
+         show_res_entry(res_mul,MUL_RES_NUM);
          return 0;
       }
    }
@@ -360,8 +362,18 @@ void update_res(reservation_entry_t * res, uint32_t num, writeResult_t * writeRe
 void show_res_entry(reservation_entry_t *res,uint32_t num)
 {
    uint32_t idx = 0;
+   printf("busy|\tready|\tinstType|\tdest|\top1|\top2|\tsrc1_tag|\tscr2_tag|\tlife\n");
    for(idx = 0;idx < num;idx++)
    {
-      printf("busy: %u, ready %u, life %u\n",res[idx].busy,res[idx].ready,res[idx].life);
+      printf("%u|\t%u|\t%u|\t%d|\t%d|\t%d\n",\
+         res[idx].busy,\
+         res[idx].ready,\
+         res[idx].ins.instructionType,\
+         res[idx].ins.dest,\
+         res[idx].ins.op1,\
+         res[idx].ins.op2,\
+         res[idx].src1_tag,\
+         res[idx].src2_tag,\
+         res[idx].life);
    }
 }
