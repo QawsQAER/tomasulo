@@ -28,6 +28,7 @@
 
 #define NUM_REGISTERS 32
 #define CONFIG_FILE "config.default"
+#define DEBUG
 typedef enum { add = 0, mult = 1 } mathOp;
 typedef enum { addImm = 0, addReg = 1, multImm = 2, multReg = 3 } instType;
 
