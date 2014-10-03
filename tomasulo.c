@@ -53,12 +53,12 @@ int execute(mathOp mathOpType, executeRequest_t *executeRequest) {
    if(mathOpType == add)
    {
       idx = get_next_ins_idx(res_add);
-      if(idx < 0)
+	if(idx < 0)
          return 0;
       executeRequest->tag = idx + 1;
       executeRequest->op1 = res_add[idx].ins.op1;
       executeRequest->op2 = res_add[idx].ins.op2;
-      res_add[idx].busy = 0;
+	printf("execute %d in res_add, propagating tag %d\n",idx,executeRequest->tag);
    }
    else if(mathOpType == mult)
    {
@@ -68,14 +68,14 @@ int execute(mathOp mathOpType, executeRequest_t *executeRequest) {
       executeRequest->tag = idx + ADD_RES_NUM + 1;
       executeRequest->op1 = res_mul[idx].ins.op1;
       executeRequest->op2 = res_mul[idx].ins.op2;
-      res_mul[idx].busy = 0;
+	printf("execute %d in res_mul, propagating tag %d\n",idx,executeRequest->tag);
    }
    else
    {
       fprintf(stderr,"Error: Invalid mathOpType encountered in execute()\n");
       exit(0);
    }
-   return (0);
+   return 1;
 }
 
 /*
@@ -242,12 +242,13 @@ int issue(instruction_t *theInstruction) {
 
 int checkDone(int registerImage[NUM_REGISTERS]) {
    uint32_t count = 0;
+	show_res_entries(res_add,ADD_RES_NUM);
+	show_res_entries(res_mul,MUL_RES_NUM);
    for(count = 0; count < ADD_RES_NUM;count++)
    {
       if(res_add[count].busy)
       {
          printf("instruction in adder reservation station\n");
-         show_res_entry(res_add,ADD_RES_NUM);
          return 0;
       }
    }
@@ -256,7 +257,6 @@ int checkDone(int registerImage[NUM_REGISTERS]) {
       if(res_mul[count].busy)
       {
          printf("instruction in mul reservation station\n");
-         show_res_entry(res_mul,MUL_RES_NUM);
          return 0;
       }
    }
@@ -312,7 +312,8 @@ int32_t get_next_ins_idx(reservation_entry_t * res)
          }
          else
             res[count].life++;
-      }
+      }else if(res[count].busy)
+		res[count].life++;
    }
    return max_idx;
 }
@@ -339,9 +340,19 @@ void update_res(reservation_entry_t * res, uint32_t num, writeResult_t * writeRe
    uint32_t idx = 0;
    for(idx = 0;idx < num;idx++)
    {
+	if(writeResult->tag > ADD_RES_NUM && res == res_mul)
+		if((writeResult->tag - ADD_RES_NUM - 1) == idx)
+			res_mul[idx].busy = 0;
+	if(writeResult->tag <= ADD_RES_NUM && res == res_add)
+		if((writeResult->tag - 1) == idx)
+			res_add[idx].busy = 0;
       if(res[idx].busy && (res[idx].src1_tag == tag || res[idx].src2_tag == tag))
       {
-         if(res[idx].src1_tag == tag)
+	if(res == res_add)
+		printf("tag matched happen for res_add %d\n",idx);
+        else
+		printf("tag mathced happen for res_mul %d\n",idx); 
+	if(res[idx].src1_tag == tag)
          {
             res[idx].src1_tag = 0;
             res[idx].ins.op1 = writeResult->value;
@@ -353,19 +364,19 @@ void update_res(reservation_entry_t * res, uint32_t num, writeResult_t * writeRe
             res[idx].ins.op2 = writeResult->value;
          }
 
-         if(res[idx].src1_tag == res[idx].src2_tag == 0)
+         if(res[idx].src1_tag == 0 && res[idx].src2_tag == 0)
             res[idx].ready = 1;
       }
    }
 }
 
-void show_res_entry(reservation_entry_t *res,uint32_t num)
+void show_res_entries(reservation_entry_t *res,uint32_t num)
 {
    uint32_t idx = 0;
-   printf("busy|\tready|\tinstType|\tdest|\top1|\top2|\tsrc1_tag|\tscr2_tag|\tlife\n");
+   printf("busy\t|ready\t|Type\t|dest\t|op1\t|op2\t|tag1\t|tag2\t|life\n");
    for(idx = 0;idx < num;idx++)
    {
-      printf("%u|\t%u|\t%u|\t%d|\t%d|\t%d\n",\
+      printf("%u\t|%u\t|%u\t|%d\t|%d\t|%d\t|%d\t|%d\t|%d\n",\
          res[idx].busy,\
          res[idx].ready,\
          res[idx].ins.instructionType,\
