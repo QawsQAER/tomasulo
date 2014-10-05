@@ -50,34 +50,6 @@ typedef struct {
    int op2;
 } instruction_t;
 
-//the reservation station entry
-typedef struct{
-	uint8_t busy;//indicates whether the slot is occupied
-	uint8_t ready;//indicates whether the instruction is ready to by executed
-	instruction_t ins;
-	uint16_t src1_tag;
-	uint16_t src2_tag;
-	uint32_t life;//indicates how long this slot is occupied by the current instruction
-} reservation_entry_t;
-
-//the register entry
-typedef struct 
-{
-	/*
-		0 means there's no instruction that is writing to this register.
-		[1, ADD_RES_NUM] means instruction in add reservation stations is writing to this register
-		[ADD_RES_NUM + 1, ADD_RES_NUM + MUL_RES_NUM + 1] means instruction in mul reservation stations is writing to this register
-	*/
-	uint16_t tag;
-	int32_t data;
-} register_entry;
-
-//the reservation station
-uint32_t ADD_RES_NUM = 3;
-uint32_t MUL_RES_NUM = 2;
-reservation_entry_t *res_add;
-reservation_entry_t *res_mul;
-register_entry *reg_file;
 
 //--------------------------------------------------------------------------------------
 // Function: void initTomasulo()
@@ -150,26 +122,5 @@ void writeResult(writeResult_t *theResult);
 
 int checkDone(int registerImage[NUM_REGISTERS]);
 
-/*
-	This function will retrieve the index of the first available slot
-	in the reservation station pointed by the res pointer.
-*/
-int32_t get_available_slot(reservation_entry_t * res);
 
-/*
-   this function will retrieve the index of the reservation station
-   for the next-to-be-executed reservation station entry 
-*/
-
-int32_t get_next_ins_idx(reservation_entry_t * res);
-
-/*
-	this function will fopen() the configuration, and read in the config about
-	the number of slots of reservation stations.
-*/
-void my_get_config(uint32_t * add_res_num, uint32_t * mul_res_num);
-
-void update_res(reservation_entry_t *res, uint32_t num, writeResult_t *theResult);
-
-void show_res_entries(reservation_entry_t *res, uint32_t num);
 #endif
