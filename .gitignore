@@ -1,3 +1,5 @@
 *
 !tomasulo.c
 !tomasulo.h
+!run_small.sh
+!run_med.sh

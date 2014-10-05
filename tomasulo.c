@@ -110,13 +110,13 @@ int execute(mathOp mathOpType, executeRequest_t *executeRequest) {
    int32_t idx = 0;
    if(mathOpType == add)
    {
-      idx = get_next_ins_idx(res_add);
-      if(idx < 0)
+      if((idx = get_next_ins_idx(res_add)) < 0)
          return 0;
       executeRequest->tag = idx + 1;
       executeRequest->op1 = res_add[idx].ins.op1;
       executeRequest->op2 = res_add[idx].ins.op2;
-      res_add[idx].ready = 0;
+      res_add[idx].executed = 1;
+      res_add[idx].life = 0;
       #ifdef DEBUG
          printf("execute %d in res_add, propagating tag %d\n",idx,executeRequest->tag);
          show_res_entries(res_add,ADD_RES_NUM);
@@ -124,13 +124,13 @@ int execute(mathOp mathOpType, executeRequest_t *executeRequest) {
    }
    else if(mathOpType == mult)
    {
-      idx = get_next_ins_idx(res_mul);
-      if(idx < 0)
+      if((idx = get_next_ins_idx(res_mul)) < 0)
          return 0;
       executeRequest->tag = idx + ADD_RES_NUM + 1;
       executeRequest->op1 = res_mul[idx].ins.op1;
       executeRequest->op2 = res_mul[idx].ins.op2;
-      res_mul[idx].ready = 0;
+      res_mul[idx].executed = 1;
+      res_mul[idx].life = 0;
       #ifdef DEBUG
          printf("execute %d in res_mul, propagating tag %d\n",idx,executeRequest->tag);
          show_res_entries(res_mul,MUL_RES_NUM);
@@ -153,7 +153,7 @@ int execute(mathOp mathOpType, executeRequest_t *executeRequest) {
 */
 int issue(instruction_t *theInstruction) {
    #ifdef DEBUG
-   printf("%d %d %d %d\n", theInstruction->instructionType, theInstruction->dest, theInstruction->op1, theInstruction->op2);
+      printf("%d %d %d %d\n", theInstruction->instructionType, theInstruction->dest, theInstruction->op1, theInstruction->op2);
    #endif
    int32_t idx = 0;
    switch(theInstruction->instructionType)
@@ -167,6 +167,7 @@ int issue(instruction_t *theInstruction) {
                printf("issuing theInstruction to res_add[%d]\n",idx);
             #endif
             res_add[idx].busy = 1;
+            res_add[idx].executed = 0;
             res_add[idx].ins.instructionType = theInstruction->instructionType;
             res_add[idx].ins.dest = theInstruction->dest;
             res_add[idx].src1_tag = reg_file[theInstruction->op1].tag;
@@ -207,6 +208,7 @@ int issue(instruction_t *theInstruction) {
                printf("issuing theInstruction to res_add[%d]\n",idx);
             #endif
             res_add[idx].busy = 1;
+            res_add[idx].executed = 0;
             res_add[idx].ins.instructionType = theInstruction->instructionType;
             res_add[idx].ins.dest = theInstruction->dest;
             res_add[idx].src1_tag = reg_file[theInstruction->op1].tag;
@@ -253,6 +255,7 @@ int issue(instruction_t *theInstruction) {
                printf("issuing theInstruction to res_mul[%d]\n",idx);
             #endif
             res_mul[idx].busy = 1;
+            res_mul[idx].executed = 0;
             res_mul[idx].ins.instructionType = theInstruction->instructionType;
             res_mul[idx].ins.dest = theInstruction->dest;
             res_mul[idx].src1_tag = reg_file[theInstruction->op1].tag;
@@ -292,6 +295,7 @@ int issue(instruction_t *theInstruction) {
                printf("issuing theInstruction to res_mul[%d]\n",idx);
             #endif
             res_mul[idx].busy = 1;
+            res_mul[idx].executed = 0;
             res_mul[idx].ins.instructionType = theInstruction->instructionType;
             res_mul[idx].ins.dest = theInstruction->dest;
             res_mul[idx].src1_tag = reg_file[theInstruction->op1].tag;
@@ -380,7 +384,7 @@ int32_t get_next_ins_idx(reservation_entry_t * res)
 {
    uint32_t idx = 0;
    uint32_t life_max = 0;
-   uint32_t max_idx = -1;
+   int32_t max_idx = -1;
    uint32_t num_of_entries = 0;
    if(res == res_add)
       {num_of_entries = ADD_RES_NUM;}
@@ -392,17 +396,17 @@ int32_t get_next_ins_idx(reservation_entry_t * res)
    uint32_t count = 0;
    for(count = 0; count < num_of_entries;count++)
    {
-      if(res[count].busy && res[count].ready)
+      if(res[count].busy && res[count].ready && (res[count].executed == 0))
       {
          if(res[count].life > life_max)
          {
-            life_max = res[count].life;
+            life_max = res[count].life++;
             max_idx = count;
          }
          else
             res[count].life++;
-      }else if(res[count].busy)
-		res[count].life++;
+      }else if(res[count].busy && (res[count].executed == 0))
+		 res[count].life++;
    }
    return max_idx;
 }
@@ -429,14 +433,16 @@ void update_res(reservation_entry_t * res, uint32_t num, writeResult_t * writeRe
    uint32_t idx = 0;
    for(idx = 0;idx < num;idx++)
    {
-      if(writeResult->tag > ADD_RES_NUM && res == res_mul)
-         if((writeResult->tag - ADD_RES_NUM - 1) == idx)
-			   res_mul[idx].busy = 0;
-      if(writeResult->tag <= ADD_RES_NUM && res == res_add)
-         if((writeResult->tag - 1) == idx)
-			   res_add[idx].busy = 0;
       
-      if(res[idx].busy && (res[idx].src1_tag == tag || res[idx].src2_tag == tag))
+      if(writeResult->tag <= ADD_RES_NUM && res == res_add && res[idx].executed)
+         if((writeResult->tag - 1) == idx)
+			   res[idx].busy = 0;
+
+      if(writeResult->tag > ADD_RES_NUM && res == res_mul && res[idx].executed)
+         if((writeResult->tag - ADD_RES_NUM - 1) == idx)
+            res[idx].busy = 0;
+      
+      if(res[idx].busy && (res[idx].src1_tag == tag || res[idx].src2_tag == tag) && (res[idx].ready == 0))
       {
          #ifdef DEBUG
          if(res == res_add)
@@ -466,12 +472,13 @@ void update_res(reservation_entry_t * res, uint32_t num, writeResult_t * writeRe
 void show_res_entries(reservation_entry_t *res,uint32_t num)
 {
    uint32_t idx = 0;
-   printf("busy\t|ready\t|Type\t|dest\t|op1\t|op2\t|tag1\t|tag2\t|life\n");
+   printf("busy\t|ready\t|exe\t|Type\t|dest\t|op1\t|op2\t|tag1\t|tag2\t|life\n");
    for(idx = 0;idx < num;idx++)
    {
-      printf("%4u\t|%5u\t|%4u\t|%4d\t|%3d\t|%3d\t|%4d\t|%4d\t|%4d\n",\
+      printf("%4u\t|%5u\t|%3u\t|%4u\t|%4d\t|%3d\t|%3d\t|%4d\t|%4d\t|%4d\n",\
          res[idx].busy,\
          res[idx].ready,\
+         res[idx].executed,\
          res[idx].ins.instructionType,\
          res[idx].ins.dest,\
          res[idx].ins.op1,\
