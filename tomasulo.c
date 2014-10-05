@@ -14,10 +14,12 @@
 #include <math.h>
 #include "tomasulo.h"
 
+#define CONFIG_FILE "config.default"
 //the reservation station entry
 typedef struct{
    uint8_t busy;//indicates whether the slot is occupied
    uint8_t ready;//indicates whether the instruction is ready to by executed
+   uint8_t executed;
    instruction_t ins;
    uint16_t src1_tag;
    uint16_t src2_tag;
