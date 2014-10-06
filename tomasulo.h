@@ -19,7 +19,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 #include <math.h>
 
 //--------------------------------------------------------------------------------------
@@ -120,6 +119,5 @@ void writeResult(writeResult_t *theResult);
 // 
 
 int checkDone(int registerImage[NUM_REGISTERS]);
-
 
 #endif

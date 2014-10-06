@@ -17,13 +17,13 @@
 #define CONFIG_FILE "config.default"
 //the reservation station entry
 typedef struct{
-   uint8_t busy;//indicates whether the slot is occupied
-   uint8_t ready;//indicates whether the instruction is ready to by executed
-   uint8_t executed;
+   unsigned char busy;//indicates whether the slot is occupied
+   unsigned char ready;//indicates whether the instruction is ready to by executed
+   unsigned char executed;
    instruction_t ins;
-   uint16_t src1_tag;
-   uint16_t src2_tag;
-   uint32_t life;//indicates how long this slot is occupied by the current instruction
+   unsigned short src1_tag;
+   unsigned short src2_tag;
+   unsigned life;//indicates how long this slot is occupied by the current instruction
 } reservation_entry_t;
 
 //the register entry
@@ -34,13 +34,13 @@ typedef struct
       [1, ADD_RES_NUM] means instruction in add reservation stations is writing to this register
       [ADD_RES_NUM + 1, ADD_RES_NUM + MUL_RES_NUM + 1] means instruction in mul reservation stations is writing to this register
    */
-   uint16_t tag;
+   unsigned short tag;
    int32_t data;
 } register_entry;
 
 //the reservation station
-uint32_t ADD_RES_NUM = 3;
-uint32_t MUL_RES_NUM = 2;
+unsigned ADD_RES_NUM = 3;
+unsigned MUL_RES_NUM = 2;
 reservation_entry_t *res_add;
 reservation_entry_t *res_mul;
 register_entry *reg_file;
@@ -62,11 +62,11 @@ int32_t get_next_ins_idx(reservation_entry_t * res);
    this function will fopen() the configuration, and read in the config about
    the number of slots of reservation stations.
 */
-void my_get_config(uint32_t * add_res_num, uint32_t * mul_res_num);
+void my_get_config(unsigned * add_res_num, unsigned * mul_res_num);
 
-void update_res(reservation_entry_t *res, uint32_t num, writeResult_t *theResult);
+void update_res(reservation_entry_t *res, unsigned num, writeResult_t *theResult);
 
-void show_res_entries(reservation_entry_t *res, uint32_t num);
+void show_res_entries(reservation_entry_t *res, unsigned num);
 
 void initTomasulo() {
 
@@ -87,7 +87,7 @@ void writeResult(writeResult_t *theResult) {
 
    update_res(res_add,ADD_RES_NUM,theResult);
    update_res(res_mul,MUL_RES_NUM,theResult);
-   uint32_t idx = 0;
+   unsigned idx = 0;
    for(idx = 0;idx < NUM_REGISTERS;idx++)
    {
       if(reg_file[idx].tag == theResult->tag)
@@ -338,7 +338,7 @@ int issue(instruction_t *theInstruction) {
 }
 
 int checkDone(int registerImage[NUM_REGISTERS]) {
-   uint32_t count = 0;
+   unsigned count = 0;
    for(count = 0; count < ADD_RES_NUM;count++)
    {
       if(res_add[count].busy)
@@ -366,14 +366,14 @@ int checkDone(int registerImage[NUM_REGISTERS]) {
 
 int32_t get_available_slot(reservation_entry_t * res)
 {
-   uint32_t num_of_entries = 0;
+   unsigned num_of_entries = 0;
    if(res == res_add)
       {num_of_entries = ADD_RES_NUM;}
    else if(res == res_mul)
       {num_of_entries = MUL_RES_NUM;}
    else
    {fprintf(stderr,"Invalid pointer for reservation station %p\n",res);}
-   uint32_t count = 0;
+   unsigned count = 0;
    for(count = 0; count < num_of_entries;count++)
    {
       if(res[count].busy == 0)
@@ -384,10 +384,10 @@ int32_t get_available_slot(reservation_entry_t * res)
 
 int32_t get_next_ins_idx(reservation_entry_t * res)
 {
-   uint32_t idx = 0;
-   uint32_t life_max = 0;
+   unsigned idx = 0;
+   unsigned life_max = 0;
    int32_t max_idx = -1;
-   uint32_t num_of_entries = 0;
+   unsigned num_of_entries = 0;
    if(res == res_add)
       {num_of_entries = ADD_RES_NUM;}
    else if(res == res_mul)
@@ -395,7 +395,7 @@ int32_t get_next_ins_idx(reservation_entry_t * res)
    else
    {fprintf(stderr,"Invalid pointer for reservation station %p\n",res);}
    
-   uint32_t count = 0;
+   unsigned count = 0;
    for(count = 0; count < num_of_entries;count++)
    {
       if(res[count].busy && res[count].ready && (res[count].executed == 0))
@@ -413,7 +413,7 @@ int32_t get_next_ins_idx(reservation_entry_t * res)
    return max_idx;
 }
 
-void my_get_config(uint32_t * add_res_num, uint32_t * mul_res_num)
+void my_get_config(unsigned * add_res_num, unsigned * mul_res_num)
 {
 	FILE *fd = fopen(CONFIG_FILE,"r");
 	if(fd == NULL)
@@ -429,10 +429,10 @@ void my_get_config(uint32_t * add_res_num, uint32_t * mul_res_num)
 	return ;
 }
 
-void update_res(reservation_entry_t * res, uint32_t num, writeResult_t * writeResult)
+void update_res(reservation_entry_t * res, unsigned num, writeResult_t * writeResult)
 {
    int tag = writeResult->tag;
-   uint32_t idx = 0;
+   unsigned idx = 0;
    for(idx = 0;idx < num;idx++)
    {
       
@@ -471,9 +471,9 @@ void update_res(reservation_entry_t * res, uint32_t num, writeResult_t * writeRe
    }
 }
 
-void show_res_entries(reservation_entry_t *res,uint32_t num)
+void show_res_entries(reservation_entry_t *res,unsigned num)
 {
-   uint32_t idx = 0;
+   unsigned idx = 0;
    printf("busy\t|ready\t|exe\t|Type\t|dest\t|op1\t|op2\t|tag1\t|tag2\t|life\n");
    for(idx = 0;idx < num;idx++)
    {
